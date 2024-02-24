@@ -106,4 +106,5 @@ async def on_message(message):
     elif 'rave' in message.content.lower():
         await message.channel.send('**__Rave.__**')
 '''
-bot.run('MTA3MDkwNjE3Mjk5MjkyNTgwNg.GEjkHz.NIoJYdc-EJ4W3EcYEYvet-XsUuCgw9LSFjoPpA')
+discord_token = 'example' # paste discord token
+bot.run(discord_token)
