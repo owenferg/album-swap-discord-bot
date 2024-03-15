@@ -1,17 +1,10 @@
-import discord
-from discord.ext import commands
 import pandas as pd
 import numpy as np
 import os
 from project_script import *
+import yt_dlp
 
 user_last_message_time = {}
-
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-bot_prefix = "r!"
-bot = commands.Bot(command_prefix=bot_prefix, intents=intents)
 
 ###################################################################################
 '''                            datascience stuff                                '''
@@ -62,6 +55,24 @@ def user_submits(user):
 '''                                commands                                     '''
 ###################################################################################
 
+import discord
+from discord.ext import commands
+import discord
+import yt_dlp
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+bot_prefix = "r!"
+bot = commands.Bot(command_prefix=bot_prefix, intents=intents)
+
+'''@bot.event
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    elif 'rave' in message.content.lower():
+        await message.channel.send('hey')'''
+
 @bot.command()
 async def user(ctx, *, data=None):
     '''returns information about a user'''
@@ -97,13 +108,80 @@ async def topusers(ctx):
     nice_list = ', '.join(user_list[:10])
     await ctx.send('__Top ten users with most album swap submits:__\n' + str(nice_list))
 
-#FIXME MAKE HELP COMMAND
+is_enabled = False
 
-'''@bot.event
-async def on_message(message):
-    if message.author == bot.user:
+@bot.command()
+async def toggle(ctx):
+    '''toggles the bot's ability to judge zeep's posts'''
+    global is_enabled
+    is_enabled = not is_enabled
+    print('Toggle command called')
+    await ctx.send(f"zeep's posts will {'now' if is_enabled else 'not'} be judged")
+
+@bot.command()
+async def join(ctx):
+    """Joins the voice channel of the user who invoked the command"""
+    if ctx.author.voice is None:
+        await ctx.send("ur not in a vc dumbass")
         return
-    elif 'rave' in message.content.lower():
-        await message.channel.send('**__Rave.__**')
-'''
-bot.run('MTA3MDkwNjE3Mjk5MjkyNTgwNg.GEjkHz.NIoJYdc-EJ4W3EcYEYvet-XsUuCgw9LSFjoPpA')
+
+    voice_channel = ctx.author.voice.channel
+    if ctx.voice_client is None:
+        await voice_channel.connect()
+    else:
+        await ctx.voice_client.move_to(voice_channel)
+
+    await ctx.send(f"get fucking ready {voice_channel}")
+
+@bot.command()
+async def leave(ctx):
+    """Leaves the voice channel that the bot is currently in"""
+    if ctx.voice_client is not None:
+        await ctx.voice_client.disconnect()
+        await ctx.send("BYEEEEEEE")
+    else:
+        await ctx.send("?????????")
+
+@bot.command()
+async def play(ctx, url=None, volume:float=0.1, loop:bool=True):
+    """Plays from a url (almost anything yt_dlp supports)"""
+    if url is None:
+        await ctx.send("put a url")
+        return
+
+    if ctx.voice_client is None:
+        if ctx.author.voice:
+            await ctx.author.voice.channel.connect()
+        else:
+            await ctx.send("erm.")
+            return
+    else:
+        if ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+
+    vc = ctx.voice_client
+
+    with yt_dlp.YoutubeDL() as ydl:
+        info = ydl.extract_info(url, download=False)
+        url2 = info['formats'][0]['url']
+        vc.play(discord.FFmpegPCMAudio(url2, **FFMPEG_OPTIONS), after=lambda e: loop and ctx.invoke(bot.get_command('play'), url=url, volume=volume, loop=loop))
+        vc.is_playing()
+        await ctx.send("Now playing: " + info['title'])
+
+@bot.event
+async def on_ready():
+    print('We have logged in as {0.user}'.format(bot))
+
+@bot.event
+async def on_message(message):
+    if message.author.name == '.z33p' and is_enabled and message.attachments:
+        upvote_emoji = discord.utils.get(bot.emojis, name="upvote")
+        downvote_emoji = discord.utils.get(bot.emojis, name="downvote")
+        await message.add_reaction(upvote_emoji)
+        await message.add_reaction(downvote_emoji)
+    await bot.process_commands(message)
+
+
+bot.run('...')
